@@ -25,7 +25,17 @@ using SIPSorcery.Sys;
 
 namespace SIPSorcery.Net
 {
-    public delegate void PacketReceivedDelegate(UdpReceiver receiver, int localPort, IPEndPoint remoteEndPoint, byte[] packet);
+    public interface IUdpReceiver
+    {
+        public bool IsClosed { get; }
+        public bool IsRunningReceive { get; }
+        public event PacketReceivedDelegate OnPacketReceived;
+        public event Action<string> OnClosed;
+        public void BeginReceiveFrom();
+        public void Close(string reason);
+    }
+    
+    public delegate void PacketReceivedDelegate(IUdpReceiver receiver, int localPort, IPEndPoint remoteEndPoint, byte[] packet);
 
     /// <summary>
     /// A basic UDP socket manager. The RTP channel may need both an RTP and Control socket. This class encapsulates
@@ -39,7 +49,7 @@ namespace SIPSorcery.Net
     /// Mono Socket source:
     /// https://github.com/mono/mono/blob/master/mcs/class/System/System.Net.Sockets/Socket.cs
     /// </remarks>
-    public class UdpReceiver
+    public class UdpReceiver: IUdpReceiver
     {
         /// <summary>
         /// MTU is 1452 bytes so this should be heaps.
@@ -278,9 +288,9 @@ namespace SIPSorcery.Net
     public class RTPChannel : IDisposable
     {
         private static ILogger logger = Log.Logger;
-        protected UdpReceiver m_rtpReceiver;
+        protected IUdpReceiver m_rtpReceiver;
         private Socket m_controlSocket;
-        protected UdpReceiver m_controlReceiver;
+        protected IUdpReceiver m_controlReceiver;
         private bool m_rtpReceiverStarted = false;
         private bool m_controlReceiverStarted = false;
         private bool m_isClosed;
@@ -397,7 +407,7 @@ namespace SIPSorcery.Net
 
                 logger.LogDebug($"RTPChannel for {RtpSocket.LocalEndPoint} started.");
 
-                m_rtpReceiver = new UdpReceiver(RtpSocket);
+                m_rtpReceiver = new KcpUdpReceiver(RtpSocket);
                 m_rtpReceiver.OnPacketReceived += OnRTPPacketReceived;
                 m_rtpReceiver.OnClosed += Close;
                 m_rtpReceiver.BeginReceiveFrom();
@@ -569,7 +579,7 @@ namespace SIPSorcery.Net
         /// <param name="localPort">The local port it was received on.</param>
         /// <param name="remoteEndPoint">The remote end point of the sender.</param>
         /// <param name="packet">The raw packet received (note this may not be RTP if other protocols are being multiplexed).</param>
-        protected virtual void OnRTPPacketReceived(UdpReceiver receiver, int localPort, IPEndPoint remoteEndPoint, byte[] packet)
+        protected virtual void OnRTPPacketReceived(IUdpReceiver receiver, int localPort, IPEndPoint remoteEndPoint, byte[] packet)
         {
             if (packet?.Length > 0)
             {
@@ -585,7 +595,7 @@ namespace SIPSorcery.Net
         /// <param name="localPort">The local port it was received on.</param>
         /// <param name="remoteEndPoint">The remote end point of the sender.</param>
         /// <param name="packet">The raw packet received which should always be an RTCP packet.</param>
-        private void OnControlPacketReceived(UdpReceiver receiver, int localPort, IPEndPoint remoteEndPoint, byte[] packet)
+        private void OnControlPacketReceived(IUdpReceiver receiver, int localPort, IPEndPoint remoteEndPoint, byte[] packet)
         {
             LastControlDestination = remoteEndPoint;
             OnControlDataReceived?.Invoke(localPort, remoteEndPoint, packet);

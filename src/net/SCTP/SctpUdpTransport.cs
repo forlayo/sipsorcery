@@ -65,7 +65,7 @@ namespace SIPSorcery.Net
         /// <param name="localPort">The local port the packet was received on.</param>
         /// <param name="remoteEndPoint">The remote end point the packet was received from.</param>
         /// <param name="packet">A buffer containing the packet.</param>
-        private void OnEncapsulationSocketPacketReceived(UdpReceiver receiver, int localPort, IPEndPoint remoteEndPoint, byte[] packet)
+        private void OnEncapsulationSocketPacketReceived(IUdpReceiver receiver, int localPort, IPEndPoint remoteEndPoint, byte[] packet)
         {
             try
             {
