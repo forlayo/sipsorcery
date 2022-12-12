@@ -25,26 +25,32 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netstandard2.1;netcoreapp3.1;net461;net5.0;net6.0;</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;netstandard2.1;netcoreapp3.1;net461;net5.0;net6.0;net6.0-android</TargetFrameworks>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">23.0</SupportedOSPlatformVersion>
     <Authors>Aaron Clauson, Christophe Irles, Rafael Soares &amp; Contributors</Authors>
     <Copyright>Copyright © 2010-2022 Aaron Clauson</Copyright>
     <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
-    <Title>SIPSorcery</Title>
+    <Title>Unofficial SIPSorcery fork</Title>
     <Summary>A cross platform C# .NET library for SIP, VoIP and WebRTC.</Summary>
-    <Description>Real-time communications library with full support for the Session Initiation Protocol (SIP) and WebRTC. No wrappers and no native libraries required.
+    <Description>A fork of the original SipSorcery package to apply patches we are needing in a quicker manner. 
+
+Real-time communications library with full support for the Session Initiation Protocol (SIP) and WebRTC. No wrappers and no native libraries required.
     </Description>
     <Company>SIP Sorcery PTY LTD</Company>
-    <Product>SIPSorcery</Product>
-    <PackageId>SIPSorcery</PackageId>
+    <Product>DisplayNote's Sipsorcery Fork</Product>
+    <PackageId>SIPSorceryDNFork</PackageId>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageProjectUrl>https://sipsorcery-org.github.io/sipsorcery/</PackageProjectUrl>
     <PackageIconUrl>http://www.sipsorcery.com/mainsite/favicon.ico</PackageIconUrl>
     <PackageIcon>icon.png</PackageIcon>
-    <RepositoryUrl>https://github.com/sipsorcery-org/sipsorcery</RepositoryUrl>
+    <RepositoryUrl>https://github.com/forlayo/sipsorcery</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryBranch>master</RepositoryBranch>
     <PackageTags>SIP WebRTC VoIP RTP SDP STUN ICE SIPSorcery</PackageTags>
-    <PackageReleaseNotes>-v6.0.11: Bug fixes.
+    <PackageReleaseNotes>-v6.0.14: Update from master c8fee0eebc27a2e73b612728e9851b8f420e2223 to get MTU fixed.
+-v6.0.13: Support Android 23 and upper.
+-v6.0.12: Fix for crash on Android as .NET issue https://github.com/dotnet/runtime/issues/75809
+-v6.0.11: Bug fixes.
 -v6.0.9: Supporting custom SIP TLS certificate validation callback. SCTP improvements.
 -v6.0.8: Multiple audio and video stream support and other fixes.
 -v6.0.7: Synchronise with audio/video abstractions library.
@@ -54,9 +60,9 @@
 -v6.0.2: Set .net6 targetted version as stable.
 -v6.0.1-pre: Added .net6 target.</PackageReleaseNotes>
     <NeutralLanguage>en</NeutralLanguage>
-    <Version>6.0.11</Version>
-    <AssemblyVersion>6.0.11</AssemblyVersion>
-    <FileVersion>6.0.11</FileVersion>
+    <Version>6.0.14</Version>
+    <AssemblyVersion>6.0.14</AssemblyVersion>
+    <FileVersion>6.0.14</FileVersion>
   </PropertyGroup>
 
   <PropertyGroup Label="SourceLink">
