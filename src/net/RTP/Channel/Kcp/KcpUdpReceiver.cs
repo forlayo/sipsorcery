@@ -19,6 +19,7 @@ namespace SIPSorcery.Net
         
         protected readonly Socket m_socket;
         protected IPEndPoint m_localEndPoint;
+        protected AddressFamily m_addressFamily;
         protected bool m_isClosed;
         protected bool m_isRunningReceive;
         
@@ -26,7 +27,11 @@ namespace SIPSorcery.Net
         protected KcpConversationOptions m_kcpConversationOptions;
         private IKcpTransport<KcpConversation> _transport;
         private KcpConversation _conversation;
-        
+
+        private IKcpTransport<KcpConversation> _sendTransport;
+        private KcpConversation _sendConversation;
+        private UdpSocketServiceDispatcher<KcpService> _dispatcher;
+
         public virtual bool IsClosed
         {
             get
@@ -63,6 +68,7 @@ namespace SIPSorcery.Net
         {
             m_socket = socket;
             m_localEndPoint = m_socket.LocalEndPoint as IPEndPoint;
+            m_addressFamily = m_socket.LocalEndPoint.AddressFamily;
             m_kcpConversationOptions = new KcpConversationOptions
             {
                 Mtu = mtu, // Maximum Transmission Unit,
@@ -76,7 +82,7 @@ namespace SIPSorcery.Net
                 var IOC_IN = 0x80000000;
                 uint IOC_VENDOR = 0x18000000;
                 var SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
-                socket.IOControl((int)SIO_UDP_CONNRESET, new[] { Convert.ToByte(false) }, null);
+                m_socket.IOControl((int)SIO_UDP_CONNRESET, new[] { Convert.ToByte(false) }, null);
             }
         }
 
@@ -95,15 +101,13 @@ namespace SIPSorcery.Net
             
             m_isRunningReceive = true;
             _cts = new CancellationTokenSource();
-            
-            _transport = KcpSocketTransport.CreateConversation(m_socket, m_localEndPoint, 0, m_kcpConversationOptions);
-            _transport.Start();
-            _conversation = _transport.Connection;
-            
-            var dispatcher = new UdpSocketServiceDispatcher<KcpService>(
+
+            EndPoint recvEndPoint = m_addressFamily == AddressFamily.InterNetwork ? new IPEndPoint(IPAddress.Any, 0) : new IPEndPoint(IPAddress.IPv6Any, 0);
+            _dispatcher = new UdpSocketServiceDispatcher<KcpService>(
                 m_socket, TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(5),
                 (sender, ep, state) =>
                 {
+                    var ojete = ep;
                     // For each peer connecting we create a KcpService instance.
                     try
                     {
@@ -122,7 +126,7 @@ namespace SIPSorcery.Net
                 (service, state) => service.Dispose(),
                 Tuple.Create(m_kcpConversationOptions, 0));
 
-            _ = dispatcher.RunAsync(m_localEndPoint, GC.AllocateUninitializedArray<byte>(m_kcpConversationOptions.Mtu), _cts.Token);
+            _dispatcher.RunAsync(recvEndPoint, GC.AllocateUninitializedArray<byte>(m_kcpConversationOptions.Mtu), _cts.Token);
 
         }
 
@@ -136,15 +140,32 @@ namespace SIPSorcery.Net
         {
             // Convert Task to APM 
             // https://devblogs.microsoft.com/pfxteam/using-tasks-to-implement-the-apm-pattern/
-            return Send(data).ToApm(callback, state);
+            return Send(data, remoteEP).ToApm(callback, null);
         }
 
-        private async Task<bool> Send(byte[] data)
+        private async Task<bool> Send(byte[] data, EndPoint remoteEP)
         {
+            if (_sendTransport == null)
+            {
+                var socket = new Socket(remoteEP.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+                if (OperatingSystem.IsWindows())
+                {
+                    var IOC_IN = 0x80000000;
+                    uint IOC_VENDOR = 0x18000000;
+                    var SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
+                    socket.IOControl((int)SIO_UDP_CONNRESET, new[] { Convert.ToByte(false) }, null);
+                }
+                await m_socket.ConnectAsync(remoteEP, _cts.Token);
+
+                _sendTransport = KcpSocketTransport.CreateConversation(m_socket, remoteEP, 0, m_kcpConversationOptions);
+                _sendTransport.Start();
+                _sendConversation = _sendTransport.Connection;
+            }
+            
             var buffer = ArrayPool<byte>.Shared.Rent(data.Length);
             try
             {
-                if (await _conversation.SendAsync(data.AsMemory(0, data.Length), _cts.Token))
+                if (await _sendConversation.SendAsync(data.AsMemory(0, data.Length), _cts.Token))
                 {
                     logger.LogDebug("Sent {DataLength} bytes", data.Length);
                     return true;

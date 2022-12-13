@@ -179,7 +179,7 @@ namespace SIPSorcery.Net
 
                 logger.LogDebug($"RTPChannel for {RtpSocket.LocalEndPoint} started.");
 
-                m_rtpReceiver = new KcpUdpReceiver(RtpSocket);
+                m_rtpReceiver = new UdpReceiver(RtpSocket);
                 m_rtpReceiver.OnPacketReceived += OnRTPPacketReceived;
                 m_rtpReceiver.OnClosed += Close;
                 m_rtpReceiver.BeginReceiveFrom();
@@ -196,7 +196,7 @@ namespace SIPSorcery.Net
             {
                 m_controlReceiverStarted = true;
 
-                m_controlReceiver = new KcpUdpReceiver(m_controlSocket);
+                m_controlReceiver = new UdpReceiver(m_controlSocket);
                 m_controlReceiver.OnPacketReceived += OnControlPacketReceived;
                 m_controlReceiver.OnClosed += Close;
                 m_controlReceiver.BeginReceiveFrom();
@@ -326,8 +326,12 @@ namespace SIPSorcery.Net
         {
             try
             {
-                Socket sendSocket = (Socket)ar.AsyncState;
-                int bytesSent = sendSocket.EndSendTo(ar);
+                if (ar.AsyncState is Socket sendSocket)
+                {
+                    sendSocket.EndSendTo(ar);
+                }
+                //Socket sendSocket = (Socket)ar.AsyncState;
+                //int bytesSent = sendSocket.EndSendTo(ar);
             }
             catch (SocketException sockExcp)
             {
