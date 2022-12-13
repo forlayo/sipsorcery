@@ -131,7 +131,15 @@ namespace SIPSorcery.Net
             CallOnPacketReceivedCallback(m_localEndPoint.Port, endpoint as IPEndPoint, data);
         }
         
-        public async Task Send(byte[] data)
+        public IAsyncResult BeginSendTo(byte[] data, int offset, int size, SocketFlags socketFlags, EndPoint remoteEP,
+            AsyncCallback callback, object state)
+        {
+            // Convert Task to APM 
+            // https://devblogs.microsoft.com/pfxteam/using-tasks-to-implement-the-apm-pattern/
+            return Send(data).ToApm(callback, state);
+        }
+
+        private async Task<bool> Send(byte[] data)
         {
             var buffer = ArrayPool<byte>.Shared.Rent(data.Length);
             try
@@ -139,20 +147,19 @@ namespace SIPSorcery.Net
                 if (await _conversation.SendAsync(data.AsMemory(0, data.Length), _cts.Token))
                 {
                     logger.LogDebug("Sent {DataLength} bytes", data.Length);
+                    return true;
                 }
                 else
                 {
                     logger.LogError("Error: Failed to send message");
                 }
             }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Send Error");
-            }
             finally
             {
                 ArrayPool<byte>.Shared.Return(buffer);
             }
+
+            return false;
         }
         
         protected virtual void CallOnPacketReceivedCallback(int localPort, IPEndPoint remoteEndPoint, byte[] packet)
