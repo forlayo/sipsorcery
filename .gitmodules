@@ -1,0 +1,3 @@
+[submodule "KcpSharp"]
+	path = KcpSharp
+	url = git@github.com:yigolden/KcpSharp.git
